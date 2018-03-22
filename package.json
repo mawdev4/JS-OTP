@@ -1,8 +1,8 @@
 {
   "name": "jsOTP",
   "version": "0.0.1",
-  "repository": "http://github.com/jiangts/jsOTP",
-  "author": "Allan Jiang",
+  "repository": "http://github.com/mawdev4/jsOTP",
+  "author": "Men At Work",
   "dependencies": {
     "grunt": "~0.4.0",
     "grunt-contrib-coffee": "*",
