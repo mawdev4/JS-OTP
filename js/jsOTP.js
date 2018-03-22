@@ -46,26 +46,105 @@
     };
 
     Totp.prototype.getOtp = function(secret, now) {
-      var epoch, hmac, key, offset, otp, shaObj, time;
+      var epoch, hmac, key, offset, otp, shaObj, time, hmacBytes, otpBytes = [];
       if (now == null) {
         now = new Date().getTime();
       }
-      key = this.base32tohex(secret);
+      key = secret;
       epoch = Math.round(now / 1000.0);
       time = this.leftpad(this.dec2hex(Math.floor(epoch / this.expiry)), 16, "0");
       shaObj = new jsSHA("SHA-1", "HEX");
       shaObj.setHMACKey(key, "HEX");
       shaObj.update(time);
       hmac = shaObj.getHMAC("HEX");
-      if (hmac === "KEY MUST BE IN BYTE INCREMENTS") {
-        throw "Error: hex key must be in byte increments";
-      } else {
-        offset = this.hex2dec(hmac.substring(hmac.length - 1));
-      }
-      otp = (this.hex2dec(hmac.substr(offset * 2, 8)) & this.hex2dec("7fffffff")) + "";
-      otp = otp.substr(otp.length - this.length, this.length);
-      return otp;
+      hmacBytes = this.hexToBytes(hmac);
+      offset = hmacBytes[19] & 0xf;
+      otpBytes.push(this.hexToBytes(0));
+      otpBytes.push(hmacBytes[offset] & 0x7f);
+      otpBytes.push(hmacBytes[offset + 1] & 0xff);
+      otpBytes.push(hmacBytes[offset + 2] & 0xff);
+      otpBytes.push(hmacBytes[offset + 3] & 0xff);
+      otp = this.base32EncodeBytes(otpBytes);
+      return otp.substr(otp.length - this.length, this.length);
     };
+
+    Totp.prototype.hexToBytes = function(hex) {
+      var C, bytes, c;
+          bytes = [];
+          c = 0;
+          C = hex.length;
+      while (c < C) {
+        bytes.push(parseInt(hex.substr(c, 2), 16));
+        c += 2;
+      }
+      return bytes;
+    };
+
+    Totp.prototype.toHexString = function(byteArray) {
+      return Array.from(byteArray, function(byte) {
+          return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+      }).join('')
+    };
+
+    Totp.prototype.base32EncodeBytes = function (bytes) {
+      var BASE32_ENCODE_CHAR = 'ZY23456789ABCDEFGHIJKLMNXPWRSTUV'.split('');
+      var v1, v2, v3, v4, v5, base32Str = '', length = bytes.length;
+      for (var i = 0, count = parseInt(length / 5) * 5; i < count;) {
+        v1 = bytes[i++];
+        v2 = bytes[i++];
+        v3 = bytes[i++];
+        v4 = bytes[i++];
+        v5 = bytes[i++];
+        base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+            BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+            BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+            BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+            BASE32_ENCODE_CHAR[(v3 << 1 | v4 >>> 7) & 31] +
+            BASE32_ENCODE_CHAR[(v4 >>> 2) & 31] +
+            BASE32_ENCODE_CHAR[(v4 << 3 | v5 >>> 5) & 31] +
+            BASE32_ENCODE_CHAR[v5 & 31];
+      }
+      // remain char
+      var remain = length - count;
+      if (remain === 1) {
+          v1 = bytes[i];
+          base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+              BASE32_ENCODE_CHAR[(v1 << 2) & 31] +
+              '======';
+      } else if (remain === 2) {
+          v1 = bytes[i++];
+          v2 = bytes[i];
+          base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+              BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+              BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+              BASE32_ENCODE_CHAR[(v2 << 4) & 31] +
+              '====';
+      } else if (remain === 3) {
+          v1 = bytes[i++];
+          v2 = bytes[i++];
+          v3 = bytes[i];
+          base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+              BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+              BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+              BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+              BASE32_ENCODE_CHAR[(v3 << 1) & 31] +
+              '===';
+      } else if (remain === 4) {
+          v1 = bytes[i++];
+          v2 = bytes[i++];
+          v3 = bytes[i++];
+          v4 = bytes[i];
+          base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+              BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+              BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+              BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+              BASE32_ENCODE_CHAR[(v3 << 1 | v4 >>> 7) & 31] +
+              BASE32_ENCODE_CHAR[(v4 >>> 2) & 31] +
+              BASE32_ENCODE_CHAR[(v4 << 3) & 31] +
+              '=';
+      }
+      return base32Str;
+    }
 
     return Totp;
 
