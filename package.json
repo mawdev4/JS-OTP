@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "repository": "http://github.com/mawdev4/jsOTP",
   "author": "Men At Work",
+  "main": "js/jsOTP.js",
   "dependencies": {
     "grunt": "~0.4.0",
     "grunt-contrib-coffee": "*",
